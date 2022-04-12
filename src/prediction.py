@@ -10,8 +10,8 @@ from .db import redis_job, redis_model
 from proloaf.modelhandler import ModelWrapper
 
 
-def parse_make_prediction(msg_body: ByteString):
-    job = PredictionJob(**json.loads(msg_body))  # , default=str))
+def parse_make_prediction(json_message_body):
+    job = PredictionJob(**json_message_body)  # , default=str))
     job.status = JobStatus.doing
     redis_job.set(f"pred_{job.job_id}", job.json())
     return job

@@ -11,8 +11,8 @@ from proloaf import datahandler as dh
 from proloaf.modelhandler import ModelWrapper
 
 
-def parse_run_training(msg_body: ByteString):
-    job = TrainingJob(**json.loads(msg_body))  # , default=str))
+def parse_run_training(json_message_body):
+    job = TrainingJob(**json_message_body)  # , default=str))
     job.status = JobStatus.doing
     redis_job.set(f"model_{job.job_id}", job.json())
     return job
