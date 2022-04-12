@@ -3,10 +3,13 @@ from ast import Bytes
 from typing import Optional, Dict, Any, List, Union
 from enum import Enum
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import  BaseModel, Field, validator
 from .data import InputDataFormat
 from .job import Job
 from proloaf.modelhandler import ModelWrapper
+from proloaf.base import PydConfigurable
+
+BaseModel = PydConfigurable
 
 class ModelType(str, Enum):
     # TODO Placeholder
@@ -17,8 +20,7 @@ class ModelType(str, Enum):
 class PredModelBase(BaseModel):
     name: Optional[str]
     model_type: ModelType
-    # XXX "just a dict" is not a comprehensible typdefinition
-    model_definition: Optional[ProloafModelDefinition]
+    model: Optional[ModelWrapper]
 
 
 class PredModel(PredModelBase):
@@ -27,10 +29,6 @@ class PredModel(PredModelBase):
     date_hyperparameter_tuned: Optional[datetime]
     predicted_feature: Optional[str]
     expected_data_format: Optional[InputDataFormat]
-    model_object: ModelWrapper
-    
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class PredModelCreationJob(Job):
@@ -61,20 +59,20 @@ class ProloafSimpleTransformerModelParameters(BaseModel):
     dropout: float = Field(0.0, ge=0, le=1)
     n_heads: int = Field(6, ge=1)
 
-def _default_model_definiton():
-    return {"recurrent": ProloafRecurrentModelParameters(),"simple_transformer":ProloafSimpleTransformerModelParameters()}
+# def _default_model_definiton():
+#     return {"recurrent": ProloafRecurrentModelParameters(),"simple_transformer":ProloafSimpleTransformerModelParameters()}
 
-class ProloafModelDefinition(BaseModel):
-    model_class: ProloafModelType = "recurrent"
-    name: Optional[str]
-    training_metric: str = "nllgauss"
-    metric_options: Dict[str,Any] = Field(default_factory=dict)
-    model_parameters: Dict[
-        ProloafModelType,
-        Union[ProloafRecurrentModelParameters, ProloafSimpleTransformerModelParameters],
-    ] = Field(default_factory=_default_model_definiton)
-    encoder_features: List[str] = None,
-    decoder_features: List[str] = None,
+# class ProloafModelDefinition(BaseModel):
+#     model_class: ProloafModelType = "recurrent"
+#     name: Optional[str]
+#     training_metric: str = "nllgauss"
+#     metric_options: Dict[str,Any] = Field(default_factory=dict)
+#     model_parameters: Dict[
+#         ProloafModelType,
+#         Union[ProloafRecurrentModelParameters, ProloafSimpleTransformerModelParameters],
+#     ] = Field(default_factory=_default_model_definiton)
+#     encoder_features: List[str] = None,
+#     decoder_features: List[str] = None,
     # TODO validate dict ({"recurrent": <RecurentDefiniton>, ... })
     # TODO most of this should be optional after a default is defined 
 
