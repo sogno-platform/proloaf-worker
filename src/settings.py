@@ -14,6 +14,6 @@ class Settings(BaseSettings):
     amqp_password:SecretStr = "testpw"
     amqp_exchange:str = "default_exchange"
     amqp_queue:str = "plf_job_queue"
-    amqp_routing_key: str = "forcasting.#"
+    amqp_routing_key: str = "forecasting.#"
 
 settings = Settings()
