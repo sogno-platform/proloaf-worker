@@ -1,5 +1,5 @@
 import pickle
-import json
+import torch
 from typing import ByteString
 from proloaf.modelhandler import ModelWrapper
 from .db import redis_job, redis_model, get_unique_id
@@ -14,8 +14,11 @@ def parse_create_model(json_message_body) -> PredModelCreationJob:
     return job
 
 def handle_create_model(basemodel:PredModelBase) -> PredModel:
-    basemodel.model.init_model()
-    # model_wrapper.init_model()
     model = PredModel(**basemodel.get_config(),model_id=2)
+    model.model.init_model()
+    print(type(model.model.model))
+    print(model.model.model)
+    compare = torch.load("model.pkl")
+    torch.save(model,"model.pkl")
     # redis_model.set(f"model_{model.model_id}", pickle.dumps(model))
     return model
