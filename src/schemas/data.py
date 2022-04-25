@@ -54,6 +54,6 @@ class InputDataFormat(BaseModel):
 
 class InputData(BaseModel):
     id: int
-    format: InputDataFormat
+    format: Optional[InputDataFormat]
 
 
