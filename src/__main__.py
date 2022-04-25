@@ -71,15 +71,16 @@ def handle_msg(msg: aio_pika.IncomingMessage):
 
 async def main(test=False):
     if test:
+        # Model creation
         model_wrapper_json = {
             "training": {
-                "optimizer_name": "adam",
-                "learning_rate": 9.9027931032814e-05,
-                "max_epochs": 1,
-                "early_stopping": {"patience": 7, "verbose": False, "delta": 0.0},
-                "batch_size": 32,
-                "history_horizon": 147,
-                "forecast_horizon": 24,
+                # "optimizer_name": "adam",
+                # "learning_rate": 9.9027931032814e-05,
+                # "max_epochs": 1,
+                # "early_stopping": {"patience": 7, "verbose": False, "delta": 0.0},
+                # "batch_size": 32,
+                # "history_horizon": 147,
+                # "forecast_horizon": 24,
             },
             "model": {
                 "rel_linear_hidden_size": 1.0,
@@ -144,7 +145,7 @@ async def main(test=False):
                 "weekday_5",
                 "weekday_6",
                 "hour_sin",
-                "weekday_sin",
+                # "weekday_sin",
                 "mnth_sin",
             ],
             "metric": "NllGauss",
@@ -155,11 +156,33 @@ async def main(test=False):
             "model_type": "model1",
             "model": model_wrapper_json,
         }
-        pred_model_creation_job_json = {"resource": pred_model_base_json, "job_id":1, "status":"pending"}
+        pred_model_creation_job_json = {
+            "resource": pred_model_base_json,
+            "job_id": 1,
+            "status": "pending",
+        }
+
         creation_job = parse_create_model(pred_model_creation_job_json)
         result_model = handle_create_model(creation_job.resource)
+
         creation_job.result = result_model
-        print(creation_job.dict())
+        # print(creation_job.dict())
+        # Training
+        training_json = {
+            "optimizer_name": "adam",
+            "learning_rate": 9.9027931032814e-05,
+            "max_epochs": 1,
+            "early_stopping": {"patience": 7, "verbose": False, "delta": 0.0},
+            "batch_size": 32,
+            "history_horizon": 147,
+            "forecast_horizon": 24,
+        }
+        training_base_json = {"data": {"id": 1}, "training": training_json, "model": 1}
+        training_job_json = {"resource": training_base_json, "job_id": 1}
+        training_job = parse_run_training(training_job_json)
+        result_training = handle_run_training(training_job.resource)
+        print(result_training)
+
     else:
         print("starting")
         amqp_listener = AmqpListener(
