@@ -1,7 +1,8 @@
 from typing import Optional, Dict, Any, Union, List
 from enum import Enum
 from datetime import datetime
-from pydantic import Field, BaseModel
+from pydantic import Field #, BaseModel
+from proloaf.base import PydConfigurable as BaseModel
 
 # from app.core.base_model import BaseModel
 
@@ -14,7 +15,7 @@ class TimeseriesData(BaseModel):
     DataFrame.
     """
 
-    index: Union[List[datetime],List[int]] = Field(
+    index: Union[List[int],List[datetime]] = Field(
         ...,
         description="Datetime index of load and features",
         # TODO better example
@@ -23,6 +24,7 @@ class TimeseriesData(BaseModel):
             "2021-04-30T14:15:00.000Z",
             "2021-04-30T14:30:00.000Z",
         ],
+    
     )
     columns: List[str] = Field(
         ...,

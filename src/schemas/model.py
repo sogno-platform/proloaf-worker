@@ -1,15 +1,17 @@
 from __future__ import annotations
-from ast import Bytes 
+from ast import Bytes
 from typing import Optional, Dict, Any, List, Union
 from enum import Enum
 from datetime import datetime
-from pydantic import  BaseModel, Field, validator
+from pydantic import Field, validator  # , BaseModel
+from proloaf.base import PydConfigurable as BaseModel
 from .data import InputDataFormat
 from .job import Job
 from proloaf.modelhandler import ModelWrapper
 from proloaf.base import PydConfigurable
 
 BaseModel = PydConfigurable
+
 
 class ModelType(str, Enum):
     # TODO Placeholder
@@ -59,6 +61,7 @@ class ProloafSimpleTransformerModelParameters(BaseModel):
     dropout: float = Field(0.0, ge=0, le=1)
     n_heads: int = Field(6, ge=1)
 
+
 # def _default_model_definiton():
 #     return {"recurrent": ProloafRecurrentModelParameters(),"simple_transformer":ProloafSimpleTransformerModelParameters()}
 
@@ -73,6 +76,5 @@ class ProloafSimpleTransformerModelParameters(BaseModel):
 #     ] = Field(default_factory=_default_model_definiton)
 #     encoder_features: List[str] = None,
 #     decoder_features: List[str] = None,
-    # TODO validate dict ({"recurrent": <RecurentDefiniton>, ... })
-    # TODO most of this should be optional after a default is defined 
-
+# TODO validate dict ({"recurrent": <RecurentDefiniton>, ... })
+# TODO most of this should be optional after a default is defined

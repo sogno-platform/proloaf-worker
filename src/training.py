@@ -5,7 +5,11 @@ import pickle
 from .schemas.job import JobStatus
 from .schemas.training import TrainingJob, TrainingBase, TrainingResult
 from .schemas.model import PredModel
-from .db import redis_job, redis_model, get_unique_id
+from .db import dummy_job_db as job_db  # TODO replace with real database redis_job
+from .db import (
+    dummy_model_db as model_db,
+)  # TODO replace with real database redis_model
+from .db import dummy_get_unique_id as get_unique_id  # TODO get_unique_id
 from proloaf import tensorloader as tl
 from proloaf import datahandler as dh
 from proloaf.modelhandler import ModelWrapper
@@ -14,18 +18,17 @@ from proloaf.modelhandler import ModelWrapper
 def parse_run_training(json_message_body):
     job = TrainingJob(**json_message_body)  # , default=str))
     job.status = JobStatus.doing
-    # redis_job.set(f"model_{job.job_id}", job.json())
+    job_db.set(f"{job.job_id}", job.json())
     return job
 
 
 def handle_run_training(basetraining: TrainingBase):
     training_def = basetraining.training
     if isinstance(basetraining.model, int):
-        # pyd_model = pickle.loads(redis_model.get(f"model_{basetraining.model}"))
-        pyd_model = torch.load("model.pkl")
+        print("loading model for training")
+        pyd_model: PredModel = model_db.get(f"model_{basetraining.model}")
+        # pyd_model = torch.load("model.pkl")
         # pyd_model.reinitialize()
-        print("")
-        print(pyd_model)
         model = pyd_model.model
     else:
         model = ModelWrapper(
@@ -44,12 +47,11 @@ def handle_run_training(basetraining: TrainingBase):
             model_id=1,  # TODO model_id=get_unique_id()
         )
     pyd_model.model.training = training_def
-    df = pd.read_csv("proloaf-worker/opsd.csv", sep=";")
+    df = pd.read_csv("opsd.csv", sep=";")
     df_train, df_val = dh.split(df, [0.9])
     # TODO add selection of source
     train_data = tl.TimeSeriesData(df_train, **training_def.dict())
     val_data = tl.TimeSeriesData(df_val, **training_def.dict())
-    print(model.dict())
     model.run_training(
         train_data=train_data,
         validation_data=val_data,
@@ -59,13 +61,14 @@ def handle_run_training(basetraining: TrainingBase):
     pyd_model.date_trained = model.training.training_start_time
     pyd_model.predicted_feature = model.target_id[0]
     # TODO add expected dataformat to pyd_model
-    # TODO redis_model.set(f"model_{pyd_model.model_id}", pickle.dumps(pyd_model))
+    print(f"saving in model_db as model_{pyd_model.model_id}")
+    model_db.set(f"model_{pyd_model.model_id}", pyd_model)
 
     dt = model.training.training_end_time - model.training.training_start_time
     return TrainingResult(
         training=model.training.get_config(),
         model=pyd_model,
-        data=basetraining.data, # TODO data should be selfdocumenting
+        data=basetraining.data,  # TODO data should be selfdocumenting
         actual_training_time=dt,
         validation_error=model.training.validation_loss,
         training_error=model.training.training_loss,

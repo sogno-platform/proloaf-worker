@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, ByteString, Callable, Dict
 import asyncio
 import aio_pika
@@ -8,14 +9,16 @@ from .training import parse_run_training, handle_run_training
 from .prediction import parse_make_prediction, handle_make_prediction
 from .settings import settings
 from .schemas.job import Job, JobStatus
-from .db import redis_job
+from .db import dummy_job_db as job_db  # TODO redis_job
 
 
 def finish_job(job: Job, result, success=True):
-    Job.result = result
+    job.result = result
     if success:
-        Job.status = JobStatus.success
-    redis_job.set(str(Job.job_id), Job.json())
+        job.status = JobStatus.success
+    else:
+        job.status = JobStatus.failed
+    job_db.set(str(job.job_id), job.get_config())
 
 
 def handle_msg_faulty(msg: aio_pika.IncomingMessage):
@@ -71,6 +74,7 @@ def handle_msg(msg: aio_pika.IncomingMessage):
 
 async def main(test=False):
     if test:
+
         # Model creation
         model_wrapper_json = {
             "training": {
@@ -163,10 +167,9 @@ async def main(test=False):
         }
 
         creation_job = parse_create_model(pred_model_creation_job_json)
-        result_model = handle_create_model(creation_job.resource)
+        # result_model = handle_create_model(creation_job.resource)
+        # finish_job(creation_job, result_model)
 
-        creation_job.result = result_model
-        # print(creation_job.dict())
         # Training
         training_json = {
             "optimizer_name": "adam",
@@ -177,11 +180,23 @@ async def main(test=False):
             "history_horizon": 147,
             "forecast_horizon": 24,
         }
-        training_base_json = {"data": {"id": 1}, "training": training_json, "model": 1}
-        training_job_json = {"resource": training_base_json, "job_id": 1}
+        training_base_json = {"data": {"id": 1}, "training": training_json, "model": 2}
+        training_job_json = {"resource": training_base_json, "job_id": 2}
         training_job = parse_run_training(training_job_json)
-        result_training = handle_run_training(training_job.resource)
-        print(result_training)
+        # result_training = handle_run_training(training_job.resource)
+        # finish_job(training_job, result_training)
+
+        # Prediction
+        prediction_json = {
+            "input_data": {"id": 1},
+            "prediction_horizon": datetime.datetime.now(),
+            "model": 2,
+        }
+        prediction_job_json = {"resource": prediction_json, "job_id": 3}
+        prediction_job = parse_make_prediction(prediction_job_json)
+        result_prediction = handle_make_prediction(prediction_job.resource)
+        finish_job(prediction_job, result_prediction)
+        print(f"{result_prediction.output_data.index = }")
 
     else:
         print("starting")

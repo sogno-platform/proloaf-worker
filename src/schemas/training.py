@@ -1,15 +1,13 @@
 from __future__ import annotations
 from typing import Optional, Dict, Any, Union
 from proloaf.modelhandler import TrainingRun
-from proloaf.base import PydConfigurable
+from proloaf.base import PydConfigurable as BaseModel
 
 
 from pydantic import Field
 from .data import InputData
 from .job import Job
 from .model import PredModelBase
-
-BaseModel = PydConfigurable
 
 # Training
 class TrainingBase(BaseModel):
