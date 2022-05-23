@@ -1,4 +1,5 @@
 import datetime
+import pickle
 from typing import Any, ByteString, Callable, Dict
 import asyncio
 import aio_pika
@@ -9,7 +10,7 @@ from .training import parse_run_training, handle_run_training
 from .prediction import parse_make_prediction, handle_make_prediction
 from .settings import settings
 from .schemas.job import Job, JobStatus
-from .db import dummy_job_db as job_db  # TODO redis_job
+from .db import redis_job as job_db  # TODO redis_job
 
 
 def finish_job(job: Job, result, success=True):
@@ -18,7 +19,7 @@ def finish_job(job: Job, result, success=True):
         job.status = JobStatus.success
     else:
         job.status = JobStatus.failed
-    job_db.set(str(job.job_id), job.get_config())
+    job_db.set(str(job.job_id), pickle.dumps(job.get_config()))
 
 
 def handle_msg_faulty(msg: aio_pika.IncomingMessage):
@@ -32,15 +33,17 @@ def _handle_msg_generic(
     parse_func: Callable[[ByteString], Job],
     handle_func: Callable[[Any], Any],
 ):
-    try:
-        json_msg_body = json.loads(msg.body)
-        job = parse_func(json_msg_body)
+    # try:
+    json_msg_body = json.loads(msg.body)
+    job = parse_func(json_msg_body)
         # TODO this should not be a generic exception
-    except Exception as exc:
-        finish_job(job, result="job description could not be parsed", success=False)
-        msg.ack()
-        return False
-    msg.ack()
+    # except Exception as exc:
+    #     # Can not finish Job because job was not created properly
+    #     # TODO Job id (and thus status) have to be comunicated outside of json in case json parsing fails
+    #     # finish_job(job, result="job description could not be parsed", success=False)
+    #     msg.ack()
+    #     return False
+    # msg.ack()
     try:
         result = handle_func(job.resource)
     # TODO this should not be a generic exception
@@ -55,6 +58,7 @@ def _handle_msg_generic(
 
 def handle_msg(msg: aio_pika.IncomingMessage):
     key = msg.routing_key
+    print(f"Got message with key {key}")
     job_type = key.split(".")[1]
     if job_type == "model":
         return _handle_msg_generic(
@@ -68,7 +72,6 @@ def handle_msg(msg: aio_pika.IncomingMessage):
         return _handle_msg_generic(
             msg, parse_func=parse_run_training, handle_func=handle_run_training
         )
-    handle_msg_faulty(msg)
     return False
 
 
@@ -171,7 +174,7 @@ async def main(test=False):
         # finish_job(creation_job, result_model)
 
         # Training
-        training_json = {
+        training_json = { 
             "optimizer_name": "adam",
             "learning_rate": 9.9027931032814e-05,
             "max_epochs": 1,
@@ -214,7 +217,11 @@ async def main(test=False):
         print("listening")
         while True:
             msg = await amqp_listener.get_message()
-            handle_msg(msg)
+            try:
+                handle_msg(msg)
+            except RuntimeError:
+                handle_msg_faulty(msg)
+            await msg.ack()
 
 
-asyncio.run(main(True))
+asyncio.run(main())
