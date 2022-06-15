@@ -9,8 +9,9 @@ from .job import Job
 
 # Prediction
 class PredictionBase(BaseModel):
-    input_data: InputData
-    prediction_horizon: datetime
+    history_horizon: datetime #input_data: InputData
+    forecast_horizon: datetime
+    prediction_start: datetime
     model: int # TODO should this be a Union[int, PredModelBase] like in TrainingBase
 
 class PredictionResult(PredictionBase):

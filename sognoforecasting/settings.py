@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     amqp_port:int = 5672
     amqp_username:str = "user"
     amqp_password:SecretStr = "testpw"
-    amqp_exchange:str = "default_exchange"
+    amqp_exchange:str = "forecastingjobs"
     amqp_queue:str = "plf_job_queue"
     amqp_routing_key: str = "forecasting.#"
 

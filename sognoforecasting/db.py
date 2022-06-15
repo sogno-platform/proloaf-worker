@@ -48,6 +48,7 @@ class DummyDB:
 
     def get(self, name: str):
         # return torch.load(os.path.join(self.folder_path, name))
+        print(f"{self.folder_path = }")
         with open(os.path.join(self.folder_path, name), "rb") as in_file:
             return pickle.load(in_file)
 

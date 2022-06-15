@@ -41,25 +41,25 @@ class PredModelCreationJob(Job):
 # TODO ProLoaF specific definitions should be imported not defined here
 
 
-class ProloafModelType(str, Enum):
-    RECURRENT = "recurrent"
-    SIMPLE_TRANSFORMER = "simple_transformer"
+# class ProloafModelType(str, Enum):
+#     RECURRENT = "recurrent"
+#     SIMPLE_TRANSFORMER = "simple_transformer"
 
 
-class ProloafRecurrentModelParameters(BaseModel):
-    core_net: str = "torch.nn.LSTM"
-    core_layers: int = Field(1, gt=0)
-    dropout_fc: float = Field(0.4, ge=0, le=1)
-    dropout_core: float = Field(0.3, ge=0, le=1)
-    rel_linear_hidden_size: float = 1.0
-    rel_core_hidden_size: float = 1.0
-    relu_leak = 0.1
+# class ProloafRecurrentModelParameters(BaseModel):
+#     core_net: str = "torch.nn.LSTM"
+#     core_layers: int = Field(1, gt=0)
+#     dropout_fc: float = Field(0.4, ge=0, le=1)
+#     dropout_core: float = Field(0.3, ge=0, le=1)
+#     rel_linear_hidden_size: float = 1.0
+#     rel_core_hidden_size: float = 1.0
+#     relu_leak = 0.1
 
 
-class ProloafSimpleTransformerModelParameters(BaseModel):
-    num_layers: int = Field(3, ge=1)
-    dropout: float = Field(0.0, ge=0, le=1)
-    n_heads: int = Field(6, ge=1)
+# class ProloafSimpleTransformerModelParameters(BaseModel):
+#     num_layers: int = Field(3, ge=1)
+#     dropout: float = Field(0.0, ge=0, le=1)
+#     n_heads: int = Field(6, ge=1)
 
 
 # def _default_model_definiton():
