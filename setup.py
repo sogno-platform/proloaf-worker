@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="sogno-forecasting-worker",
@@ -6,7 +6,7 @@ setup(
     description="Classes for interfacing with AMQP",
     author="Florian Oppermann",
     url="https://github.com/sogno-platform/sogno-job-queue",
-    packages=["sognoforecasting"],
+    packages=find_packages(where="*")  ,#["sognoforecasting"],
     license="Apache-2.0 License",
     python_requires=">=3.8",
     install_requires=[
