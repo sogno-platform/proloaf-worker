@@ -6,7 +6,7 @@ setup(
     description="Classes for interfacing with AMQP",
     author="Florian Oppermann",
     url="https://github.com/sogno-platform/sogno-job-queue",
-    packages=find_packages(where="*")  ,#["sognoforecasting"],
+    packages=find_packages()  ,#["sognoforecasting"],
     license="Apache-2.0 License",
     python_requires=">=3.8",
     install_requires=[
