@@ -45,7 +45,7 @@ def handle_run_training(basetraining: TrainingBase, model_db = None):
             model_id=get_unique_id()
         )
     pyd_model.model.training = training_def
-    df = pd.read_csv("./proloaf-worker/opsd.csv", sep=";") #./proloaf-worker/
+    df = pd.read_csv("./opsd.csv", sep=";") #./proloaf-worker/
     df_train, df_val = dh.split(df, [0.9])
     # TODO add selection of source
     train_data = tl.TimeSeriesData(df_train, **training_def.dict())

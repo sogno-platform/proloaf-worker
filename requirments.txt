@@ -1,4 +1,0 @@
-pydantic ~= 1.9
-redis ~= 4.1
-# TODO make sognojq into pypi package
-git+https://github.com/sogno-platform/sogno-job-queue@main#egg=sogno-job-queue

@@ -44,7 +44,7 @@ def handle_make_prediction(baseprediction: PredictionBase, model_db=None):
     print(f"model_{model_id}")
     print(f"{pyd_model.model.initialized = }")
     model: ModelWrapper = pyd_model.model
-    df = pd.read_csv("./proloaf-worker/opsd.csv", sep=";", index_col="Time",parse_dates=True)
+    df = pd.read_csv("./opsd.csv", sep=";", index_col="Time",parse_dates=True)
     # XXX think of a better way to handle timezone unaware data (idealy there should be no timezone unaware data in the database)
     df.index.tz_localize(tz='utc')
     # TODO add selection of source
