@@ -8,16 +8,16 @@ from sognoforecasting.schemas.model import PredModelCreationJob
 from sognoforecasting.schemas.prediction import PredictionJob
 from sognoforecasting.schemas.training import TrainingJob
 from sognojq.amqp import AmqpListener
-from .model import parse_create_model, handle_create_model
-from .training import parse_run_training, handle_run_training
-from .prediction import parse_make_prediction, handle_make_prediction
-from .settings import settings
-from .schemas.job import Job, JobStatus
-from .db import redis_job as job_db  # TODO replace with real database redis_job
-from .db import (
+from sognoforecasting.model import parse_create_model, handle_create_model
+from sognoforecasting.training import parse_run_training, handle_run_training
+from sognoforecasting.prediction import parse_make_prediction, handle_make_prediction
+from sognoforecasting.settings import settings
+from sognoforecasting.schemas.job import Job, JobStatus
+from sognoforecasting.db import redis_job as job_db  # TODO replace with real database redis_job
+from sognoforecasting.db import (
     redis_model as model_db,
 )  # TODO replace with real database redis_model
-from .db import get_unique_id as get_unique_id  # TODO get_unique_id
+from sognoforecasting.db import get_unique_id as get_unique_id  # TODO get_unique_id
 
 
 def finish_job(job: Job, result, success=True, job_db=None):
