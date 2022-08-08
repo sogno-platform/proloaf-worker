@@ -1,4 +1,4 @@
-FROM python:3
+FROM haifischbecken/my-test-repo:proloaf-base
 COPY ./setup.py ./setup.py
 COPY ./requirements.txt ./
 COPY ./sognoforecasting ./sognoforecasting
