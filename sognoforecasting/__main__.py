@@ -1,24 +1,34 @@
 import datetime
-import pickle
 from typing import Any, ByteString, Callable, Dict, List, Tuple, Union
 import asyncio
 import aio_pika
 import json
-from sognoforecasting.schemas.model import PredModelCreationJob
+import logging
+import os
+from sognoforecasting.schemas.api.model import PredModelCreationJob
 from sognoforecasting.schemas.prediction import PredictionJob
-from sognoforecasting.schemas.training import TrainingJob
+from sognoforecasting.schemas.api.training import TrainingJob
 from sognojq.amqp import AmqpListener
 from sognoforecasting.model import parse_create_model, handle_create_model
 from sognoforecasting.training import parse_run_training, handle_run_training
 from sognoforecasting.prediction import parse_make_prediction, handle_make_prediction
 from sognoforecasting.settings import settings
 from sognoforecasting.schemas.job import Job, JobStatus
-from sognoforecasting.db import redis_job as job_db  # TODO replace with real database redis_job
+from sognoforecasting.db import redis_job as job_db
 from sognoforecasting.db import (
-    redis_model as model_db,
-)  # TODO replace with real database redis_model
-from sognoforecasting.db import get_unique_id as get_unique_id  # TODO get_unique_id
+    redis_model_defs as model_db,
+)
+from sognoforecasting.db import (
+    redis_model as model_object_db,
+)
+from sognoforecasting.db import get_unique_id as get_unique_id
 
+logging.basicConfig(
+    format="%(asctime)s: [%(filename)s:%(lineno)d] %(levelname)s: %(message)s",
+    level=settings.logging_level.upper()
+)
+
+logger = logging.getLogger("sogno.forecasting.worker")
 
 def finish_job(job: Job, result, success=True, job_db=None):
     job.result = result
@@ -27,7 +37,7 @@ def finish_job(job: Job, result, success=True, job_db=None):
     else:
         job.status = JobStatus.failed
     if job_db is not None:
-        print(f"{job.json() = }")
+        logger.debug(f"{job.json() = }")
         # XXX there should be a better way to distiguish between the jobtypes if jobs are in a full database
         if isinstance(job, PredictionJob):
             pre = "pred_"
@@ -38,13 +48,8 @@ def finish_job(job: Job, result, success=True, job_db=None):
         job_db.set(f"{pre}{job.job_id}", job.json())
 
 
-def handle_msg_faulty(msg: aio_pika.IncomingMessage):
-    print(f"Message could not be parsed")
-    pass
-
-
 def parse_routing(key: str) -> Tuple[str]:
-    print(f"Got message with key {key}")
+    logger.info(f"Got message with key {key}")
     key_parts = key.split(".")
     job_type = key_parts[-2]
     job_id = key_parts[-1]
@@ -55,7 +60,8 @@ def handle_job(msg: aio_pika.IncomingMessage):
     job_type, job_id = parse_routing(msg.routing_key)
     try:
         json_msg_body = json.loads(msg.body)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        logger.exception(exc.with_traceback())
         job = Job(job_id=job_id)
         finish_job(
             job, result="Message was not valid JSON", success=False, job_db=job_db
@@ -68,11 +74,16 @@ def handle_job(msg: aio_pika.IncomingMessage):
         parse_func = parse_make_prediction
         handle_func = handle_make_prediction
     if job_type == "training":
+        print("got to job type parsing")
         parse_func = parse_run_training
         handle_func = handle_run_training
     try:
+        print("before parse func")
         job = parse_func(json_msg_body, job_db=job_db)
-    except (ValueError, TypeError):
+        print("after parse func")
+    except (ValueError, TypeError) as exc:
+        print("job could not be parsed")
+        logger.exception(exc.with_traceback())
         finish_job(
             job,
             result="Message was valid JSON, but could not be deserialized.",
@@ -81,13 +92,17 @@ def handle_job(msg: aio_pika.IncomingMessage):
         )
         return False
     try:
-        result = handle_func(job.resource, model_db=model_db)
-    except RuntimeError:
+        result = handle_func(
+            job.resource, model_db=model_db, model_object_db=model_object_db
+        )
+    except Exception as exc:
+        print("job could not be handled")
+        logger.exception(exc.with_traceback())
         finish_job(
             job,
-            result=None,
+            result="The Job could not be processed.",
             success=False,
-            job_db=job_db,  # TODO result can not be a String atm "Job could not be processed."
+            job_db=job_db,
         )
         return False
     finish_job(job, result, job_db=job_db)
@@ -192,7 +207,9 @@ async def main(test=False):
         }
 
         creation_job = parse_create_model(pred_model_creation_job_json, job_db=job_db)
-        result_model = handle_create_model(creation_job.resource, model_db=model_db)
+        result_model = handle_create_model(
+            creation_job.resource, model_db=model_db, model_object_db=model_object_db
+        )
         finish_job(creation_job, result_model)
 
         # Training
@@ -208,7 +225,9 @@ async def main(test=False):
         training_base_json = {"data": {"id": 1}, "training": training_json, "model": 2}
         training_job_json = {"resource": training_base_json, "job_id": 2}
         training_job = parse_run_training(training_job_json, job_db=job_db)
-        result_training = handle_run_training(training_job.resource, model_db=model_db)
+        result_training = handle_run_training(
+            training_job.resource, model_db=model_db, model_object_db=model_object_db
+        )
         finish_job(training_job, result_training, job_db=job_db)
 
         # Prediction
@@ -220,13 +239,13 @@ async def main(test=False):
         prediction_job_json = {"resource": prediction_json, "job_id": 3}
         prediction_job = parse_make_prediction(prediction_job_json, job_db=job_db)
         result_prediction = handle_make_prediction(
-            prediction_job.resource, model_db=model_db
+            prediction_job.resource, model_db=model_db, model_object_db=model_object_db
         )
         finish_job(prediction_job, result_prediction)
-        print(f"{result_prediction.output_data.index = }")
+        logger.debug(f"{result_prediction.output_data.index = }")
 
     else:
-        print("starting")
+        logger.info("starting")
         amqp_listener = AmqpListener(
             amqp_host=settings.amqp_host,
             amqp_port=settings.amqp_port,
@@ -234,18 +253,23 @@ async def main(test=False):
             amqp_password=settings.amqp_password.get_secret_value(),
             amqp_queue_name=settings.amqp_queue,
         )
-        print("binding to exchange")
+        logger.info("binding to exchange")
         await amqp_listener.bind_to_exchange(
             exchange_name=settings.amqp_exchange, routing_key=settings.amqp_routing_key
         )
-        print("listening")
+        logger.info("listening")
         while True:
-            msg = await amqp_listener.get_message()
-            await msg.ack()
             try:
-                handle_job(msg)
-            except RuntimeError:
-                handle_msg_faulty(msg)
+                msg = await amqp_listener.get_message()
+            except asyncio.exceptions.TimeoutError as exc:
+                print("timeout occured")
+                print(msg)
+                raise exc
+            await msg.ack()
+            # logger.debug("msg loop check")
+            print("loop check")
+            handle_job(msg)
+            
 
 
 asyncio.run(main())

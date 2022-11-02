@@ -1,33 +1,38 @@
 from datetime import datetime
-import torch
-from typing import Any, ByteString, Dict
+import logging
 import pandas as pd
 import pickle
 from .schemas.job import JobStatus
-from .schemas.training import TrainingJob, TrainingBase, TrainingResult
-from .schemas.model import PredModel
+from .schemas.api.training import TrainingJob, TrainingResult
+from .schemas.api.training import TrainingBase as ApiTrainingBase
+from .mappings.proloaf import convert_pred_model_to_api, convert_training_to_api, convert_training_to_proloaf
+from .schemas.proloaf.model import PredModel
 from .db import get_unique_id as get_unique_id
 from proloaf import tensorloader as tl
 from proloaf import datahandler as dh
 from proloaf.modelhandler import ModelWrapper
 
+logger = logging.getLogger("sogno.forecasting.worker")
 
 def parse_run_training(json_message_body, job_db = None):
     job = TrainingJob(**json_message_body)  # , default=str))
     job.status = JobStatus.doing
     if job_db is not None:
-        job_db.set(f"{job.job_id}", job.json())
+        job_db.set(f"train_{job.job_id}", job.json())
     return job
 
 
-def handle_run_training(basetraining: TrainingBase, model_db = None):
-    training_def = basetraining.training
+def handle_run_training(basetraining: ApiTrainingBase, model_db = None, model_object_db = None):
+    training_def = convert_training_to_proloaf(basetraining.training)
     if isinstance(basetraining.model, int):
-        print("loading model for training")
-        pyd_model: PredModel = pickle.loads(model_db.get(f"model_{basetraining.model}"))
-        # pyd_model = torch.load("model.pkl")
-        # pyd_model.reinitialize()
-        model = pyd_model.model
+        logger.info("loading model for training")
+        try:
+            pyd_model: PredModel = pickle.loads(model_object_db.get(f"model_{basetraining.model}"))
+            # pyd_model = torch.load("model.pkl")
+            # pyd_model.reinitialize()
+            model = pyd_model.model
+        except TypeError as exc:
+            raise TypeError(f"model with id {basetraining.model} could not be loaded.") from exc
     else:
         model = ModelWrapper(
             **basetraining.model.model_definition.dict(),
@@ -36,7 +41,7 @@ def handle_run_training(basetraining: TrainingBase, model_db = None):
             max_epochs=training_def.max_epochs,
             learning_rate=training_def.learning_rate,
             optimizer_name=training_def.optimizer_name,
-            # XXX horizons might end up here in the end depending on proloaf chnges
+            # XXX horizons might end up here in the end depending on proloaf changes
         )
         model.init_model()
         pyd_model = PredModel(
@@ -51,25 +56,31 @@ def handle_run_training(basetraining: TrainingBase, model_db = None):
     train_data = tl.TimeSeriesData(df_train, **training_def.dict())
     val_data = tl.TimeSeriesData(df_val, **training_def.dict())
     
-    print("start training")
+    logger.info("start training")
     model.run_training(
         train_data=train_data,
         validation_data=val_data,
         batch_size=training_def.batch_size,
     )
-    print("done training")
+    logger.info("done training")
 
     pyd_model.date_trained = datetime.utcnow() # TODO This is a perf_counter proloaf
     pyd_model.predicted_feature = model.target_id[0]
     # TODO add expected dataformat to pyd_model
     if model_db is not None:
-        print(f"saving in model_db as model_{pyd_model.model_id}")
-        model_db.set(f"model_{pyd_model.model_id}", pickle.dumps(pyd_model))
+        logger.info(f"saving model metadata in model_db as model_{pyd_model.model_id}")
+        model_db.set(f"model_{pyd_model.model_id}", pyd_model.json())
+
+    if model_object_db is not None:
+        logger.info(f"saving model metadata in model_object_db as model_{pyd_model.model_id}")
+        model_object_db.set(f"model_{pyd_model.model_id}", pickle.dumps(pyd_model))
+
+
 
     dt = model.training.training_end_time - model.training.training_start_time
     return TrainingResult(
-        training=model.training.get_config(),
-        model=pyd_model,
+        training=convert_training_to_api(model.training),
+        model=convert_pred_model_to_api(pyd_model),
         data=basetraining.data,  # TODO data should be selfdocumenting
         actual_training_time=dt,
         validation_error=model.training.validation_loss,

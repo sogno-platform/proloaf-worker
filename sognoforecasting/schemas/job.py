@@ -1,10 +1,8 @@
 from typing import Optional, Dict, Any, Union
 from enum import Enum
-from uuid import UUID
-from datetime import date, datetime
+from datetime import datetime
 from pydantic import Field, validator  # , BaseModel
 from proloaf.base import PydConfigurable as BaseModel
-from .data import InputData
 
 
 class JobStatus(str, Enum):

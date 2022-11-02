@@ -1,12 +1,11 @@
 from __future__ import annotations
-from ast import Bytes
 from typing import Optional, Dict, Any, List, Union
 from enum import Enum
 from datetime import datetime
 from pydantic import Field, validator  # , BaseModel
 from proloaf.base import PydConfigurable as BaseModel
-from .data import InputDataFormat
-from .job import Job
+from ..data import InputDataFormat
+from ..job import Job
 from proloaf.modelhandler import ModelWrapper
 from proloaf.base import PydConfigurable
 

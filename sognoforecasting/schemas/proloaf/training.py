@@ -5,7 +5,7 @@ from proloaf.base import PydConfigurable as BaseModel
 
 
 from pydantic import Field
-from .data import InputData
+from .api.data import InputData
 from .job import Job
 from .model import PredModelBase
 

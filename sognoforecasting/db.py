@@ -1,9 +1,11 @@
 import os
 import pickle
-import torch
+import logging
 from redis import from_url as redis_from_url
 from .settings import settings
 import pathlib
+
+logger = logging.getLogger("sogno.forecasting.worker")
 
 redis_meta = redis_from_url(
     url=f"redis://{settings.redis_host}:{settings.redis_port}",
@@ -20,6 +22,13 @@ redis_job = redis_from_url(
 )
 
 redis_model = redis_from_url(
+    url=f"redis://{settings.redis_host}:{settings.redis_port}",
+    username=settings.redis_username,
+    password=settings.redis_password.get_secret_value(),
+    db=3,
+)
+
+redis_model_defs = redis_from_url(
     url=f"redis://{settings.redis_host}:{settings.redis_port}",
     username=settings.redis_username,
     password=settings.redis_password.get_secret_value(),
@@ -48,7 +57,7 @@ class DummyDB:
 
     def get(self, name: str):
         # return torch.load(os.path.join(self.folder_path, name))
-        print(f"{self.folder_path = }")
+        logger.debug(f"{self.folder_path = }")
         with open(os.path.join(self.folder_path, name), "rb") as in_file:
             return pickle.load(in_file)
 
