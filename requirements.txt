@@ -1,5 +1,5 @@
 pydantic ~= 1.9
 redis ~= 4.1
 # TODO make sognojq into pypi package
-git+https://github.com/sogno-platform/sogno-job-queue@main#egg=sogno-job-queue
+git+https://github.com/sogno-platform/sogno-job-queue@develop#egg=sogno-job-queue
 git+https://git.rwth-aachen.de/acs/public/automation/plf/proloaf/@prep-for-sogno-service-new-history#egg=proloaf
